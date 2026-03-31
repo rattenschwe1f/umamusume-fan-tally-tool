@@ -1,0 +1,1 @@
+# umamusume-fan-tally-tool

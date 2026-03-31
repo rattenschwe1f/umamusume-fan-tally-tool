@@ -115,8 +115,8 @@ function buildDiscordPayload(data) {
   const embeds = chunks.map((fields, idx) => ({
     title:
       idx === 0
-        ? "HSM Club Stats (Rank Board)"
-        : `HSM Club Stats (cont. ${idx + 1})`,
+        ? "Club Stats (Rank Board)"
+        : `Club Stats (cont. ${idx + 1})`,
     description:
       idx === 0
         ? `Statistics as of ${generatedAt}\nDaily Requirement: ${formatNumber(dailyRequirement)}\nMeeting Goal: ${meetingGoalCount}/${players.length}\nBelow Goal: ${belowGoalCount}/${players.length}\nInactive Members: ${inactiveCount}\nTop Daily Gain: ${topDaily || "N/A"}`
@@ -127,7 +127,7 @@ function buildDiscordPayload(data) {
   }));
 
   return {
-    username: "HSM Stat Tracker",
+    username: "Uma Fan Tracker",
     content: `Club stats update for ${generatedAt}`,
     embeds,
   };

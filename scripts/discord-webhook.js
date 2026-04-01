@@ -15,15 +15,15 @@ function formatNumber(value) {
   return Math.round(value).toLocaleString();
 }
 
-function getTrackerName() {
-  return (process.env.TRACKER_NAME || "Fan Tracker").trim();
-}
-
 function getClubName() {
   return (process.env.CLUB_NAME || "Club").trim();
 }
 
-// Goal emote is fully modular from .env
+// New: Get webhook name from .env
+function getWebhookName() {
+  return (process.env.WEBHOOK_NAME || "Club Stats").trim();
+}
+
 function getGoalReachedEmote() {
   const emote = (process.env.GOAL_REACHED_EMOTE || "").trim();
   return emote || ":white_check_mark:";
@@ -54,7 +54,6 @@ function formatPlayerLine(player) {
   const avg7 = avg7Raw > 0 ? formatNumber(avg7Raw) : "0";
   const monthlyGain = formatNumber(monthlyGainRaw);
 
-  // Quota status - only shows emote when reached
   const goalReachedEmote = getGoalReachedEmote();
   const quotaStatus = monthlyGainRaw >= 50000000
     ? goalReachedEmote
@@ -68,8 +67,9 @@ function formatPlayerLine(player) {
 }
 
 function buildDiscordPayload(data) {
-  const trackerName = getTrackerName();
+  const webhookName = getWebhookName();
   const clubName = getClubName();
+
   let players = Array.isArray(data.players) ? [...data.players] : [];
 
   // Remove LEFT players
@@ -123,7 +123,7 @@ function buildDiscordPayload(data) {
   }));
 
   return {
-    username: trackerName,
+    username: webhookName,                    // ← Now uses WEBHOOK_NAME from .env
     content: `${clubName} stats update for ${generatedAt}`,
     embeds,
   };

@@ -1,103 +1,47 @@
-# Daily Discord Stats Bot
+# Uma Circle Stats Discord Tracker
 
-Small automation project that:
-1. Collects club player stats from `uma.moe` with Cypress.
-2. Saves the result to `stats.json`.
-3. Sends a formatted message to Discord webhook.
+A simple automated tracker that sends daily club statistics from uma.moe to a Discord channel.
 
-## What You Need To Configure
+### Features
+- Daily club rank board showing: **Daily gain**, **7-day average**, **Monthly gain**, and **Goal progress**
+- Fully customizable **monthly goal** (`GOAL_METRIC`)
+- Custom **webhook name** so the bot appears with your preferred name in Discord
+- Automatically removes players that left the club
 
-Only 3 values are required:
+---
 
-- `CLUB_ID` (GitHub Actions **VARIABLE**)
-- `GOAL_METRIC` (GitHub Actions **VARIABLE**)
-- `DISCORD_WEBHOOK_URL` (GitHub Actions **SECRET**)
+## Setup Guide
 
-### Setup Diagram (Beginner Friendly)
+### 1. Create Your Own Repository
 
-If you are new to GitHub:
+This is a **public template**. To use it:
 
-1. Open your repository page on GitHub.
-2. Click the `Settings` tab (top menu).
-3. In the left sidebar, go to `Secrets and variables` -> `Actions`.
-4. Open the `Variables` tab and click `New repository variable`:
-   - Add `CLUB_ID`
-   - Add `GOAL_METRIC`
-5. Open the `Secrets` tab and click `New repository secret`:
-   - Add `DISCORD_WEBHOOK_URL`
+1. Go to this repository.
+2. Click the green **"Use this template"** button (top right).
+3. Select **"Create a new repository"**.
+4. Give it a name and click **"Create repository"**.
 
-Reference screenshots:
+### 2. Configure Your Settings
 
-![GitHub location for Secrets and Variables](docs/img/secretsandvariables.png)
-![Add repository variables](docs/img/github-actions-variables.png)
-![Add repository secret](docs/img/github-actions-secrets.png)
+Fill in the values in the `.env` file with your information:
 
-```mermaid
-flowchart TD
-  A[Open your repo on github.com] --> B[Click Settings tab]
-  B --> C[Left menu: Secrets and variables -> Actions]
-  C --> D[Add variable: CLUB_ID]
-  D --> E[Add variable: GOAL_METRIC]
-  E --> F[Add secret: DISCORD_WEBHOOK_URL]
-  F --> G[Run workflow manually once]
-```
+```env
+# === REQUIRED SETTINGS ===
 
-## How The Automation Works
+# Your Club ID – the funny lil numbers that appear behind https://uma.moe/circles/
+# Example: if the URL is https://uma.moe/circles/987654321 → put 987654321 here
+CLUB_ID=
 
-```mermaid
-flowchart LR
-  A[GitHub Actions schedule] --> B[Run Cypress test]
-  B --> C[Generate stats.json]
-  C --> D[Build Discord payload]
-  D --> E[Send webhook message]
-```
+# The number of fans you want to gain for the month (example: 50000000 for 50 million)
+GOAL_METRIC=
 
-Workflow file: `.github/workflows/daily-discord-stats.yml`
+# Discord Webhook URL (click "Copy Webhook URL" when creating the webhook in your Discord server)
+DISCORD_WEBHOOK_URL=
 
-## Local Commands (Simple)
+# === DISPLAY SETTINGS ===
 
-Install:
+# The name the "account" sending the messages in your server will have
+WEBHOOK_NAME=
 
-```bash
-pnpm install
-```
-
-Collect stats locally:
-
-```bash
-pnpm run collect:stats
-```
-
-Preview Discord payload without sending:
-
-```bash
-GOAL_METRIC=100000 pnpm run discord:preview
-```
-
-Send to Discord:
-
-```bash
-DISCORD_WEBHOOK_URL="https://discord.com/api/webhooks/..." GOAL_METRIC=100000 pnpm run discord:send
-```
-
-## Production-Like Rules
-
-- Do **not** commit generated files (`stats.json`, preview payloads).
-- Do **not** commit `node_modules`.
-- Keep secrets only in GitHub Secrets, never in code.
-- Use the existing workflow schedule for daily execution.
-
-## Change This If Needed
-
-If the source website layout changes:
-
-- Update selectors in `cypress/e2e/fishing-components.cy.js`
-- Keep output format compatible with `scripts/discord-webhook.js`
-
-```mermaid
-flowchart TD
-  A[Website structure changes] --> B[Update Cypress selectors]
-  B --> C[Run collect:stats locally]
-  C --> D[Run discord:preview]
-  D --> E[Commit only code/workflow changes]
-```
+# Your club name (used in messages and embed titles)
+CLUB_NAME=

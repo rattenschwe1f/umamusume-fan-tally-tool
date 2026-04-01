@@ -1,6 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 require("dotenv").config();
+
 const statsPath = path.resolve(process.cwd(), "stats.json");
 
 function parseNumber(value) {
@@ -19,7 +20,6 @@ function getClubName() {
   return (process.env.CLUB_NAME || "Club").trim();
 }
 
-// New: Get webhook name from .env
 function getWebhookName() {
   return (process.env.WEBHOOK_NAME || "Club Stats").trim();
 }
@@ -27,6 +27,11 @@ function getWebhookName() {
 function getGoalReachedEmote() {
   const emote = (process.env.GOAL_REACHED_EMOTE || "").trim();
   return emote || ":white_check_mark:";
+}
+
+function getGoalMetric() {
+  const metric = parseNumber(process.env.GOAL_METRIC);
+  return metric > 0 ? metric : 50000000;  // fallback
 }
 
 function cleanNameAndRole(player) {
@@ -55,13 +60,27 @@ function formatPlayerLine(player) {
   const monthlyGain = formatNumber(monthlyGainRaw);
 
   const goalReachedEmote = getGoalReachedEmote();
-  const quotaStatus = monthlyGainRaw >= 50000000
+  const goalMetric = getGoalMetric();
+  const dailyQuota = Math.round(goalMetric / 30);
+
+  // Dynamic Quota based on current day of the month
+  const now = new Date();
+  const currentDay = now.getDate();
+  const currentQuotaTarget = Math.round(dailyQuota * currentDay);
+
+  // Final Quota (full monthly goal)
+  const finalQuotaStatus = monthlyGainRaw >= goalMetric
     ? goalReachedEmote
-    : `${formatNumber(50000000 - monthlyGainRaw)} required`;
+    : `${formatNumber(goalMetric - monthlyGainRaw)} required`;
+
+  // Dynamic Quota (current day target) - works exactly like final quota
+  const quotaStatus = monthlyGainRaw >= currentQuotaTarget
+    ? goalReachedEmote
+    : `${formatNumber(currentQuotaTarget - monthlyGainRaw)} required`;
 
   return {
     name: `${rank} ${name}`.slice(0, 256),
-    value: `Daily: ${dailyFormatted}\nAvg 7d: ${avg7}\nMonthly: ${monthlyGain}\nQuota: ${quotaStatus}`,
+    value: `Daily: ${dailyFormatted}\nAvg 7d: ${avg7}\nMonthly: ${monthlyGain}\nQuota: ${quotaStatus}\nFinal Quota: ${finalQuotaStatus}`,
     inline: true,
   };
 }
@@ -69,9 +88,11 @@ function formatPlayerLine(player) {
 function buildDiscordPayload(data) {
   const webhookName = getWebhookName();
   const clubName = getClubName();
+  const goalMetric = getGoalMetric();
+  const dailyQuota = Math.round(goalMetric / 30);
 
   let players = Array.isArray(data.players) ? [...data.players] : [];
-
+  
   // Remove LEFT players
   players = players.filter((player) => {
     const { role } = cleanNameAndRole(player);
@@ -96,10 +117,10 @@ function buildDiscordPayload(data) {
   }
 
   const totalPlayers = players.length;
-  const meetingGoalCount = players.filter(
-    (player) => parseNumber(player.stats?.monthly_gain || "0") >= 50000000
+  const meetingQuotaCount = players.filter(
+    (player) => parseNumber(player.stats?.monthly_gain || "0") >= goalMetric
   ).length;
-  const belowGoalCount = totalPlayers - meetingGoalCount;
+  const belowQuotaCount = totalPlayers - meetingQuotaCount;
 
   const topDaily = [...players]
     .sort((a, b) => parseNumber(b.stats?.daily_gain) - parseNumber(a.stats?.daily_gain))
@@ -115,7 +136,12 @@ function buildDiscordPayload(data) {
       ? `${clubName} Stats (Ranked by Monthly Gain)`
       : `${clubName} Stats (cont. ${idx + 1})`,
     description: idx === 0
-      ? `Statistics as of ${generatedAt}\nMonthly Goal: 50,000,000\nMeeting Goal: ${meetingGoalCount}/${totalPlayers}\nBelow Goal: ${belowGoalCount}/${totalPlayers}\nTop Daily Gain: ${topDaily || "N/A"}`
+      ? `Statistics as of ${generatedAt}\n` +
+        `Monthly Quota: ${formatNumber(goalMetric)}\n` +
+        `Daily Quota: ${formatNumber(dailyQuota)}\n` +
+        `Meeting Quota: ${meetingQuotaCount}/${totalPlayers}\n` +
+        `Below Quota: ${belowQuotaCount}/${totalPlayers}\n` +
+        `Top Daily Gain: ${topDaily || "N/A"}`
       : undefined,
     color: 0x1f8b4c,
     fields,
@@ -123,7 +149,7 @@ function buildDiscordPayload(data) {
   }));
 
   return {
-    username: webhookName,                    // ← Now uses WEBHOOK_NAME from .env
+    username: webhookName,
     content: `${clubName} stats update for ${generatedAt}`,
     embeds,
   };
@@ -134,11 +160,13 @@ async function sendWebhook(payload) {
   if (!webhookUrl) {
     throw new Error("Missing DISCORD_WEBHOOK_URL environment variable");
   }
+
   const response = await fetch(webhookUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
+
   if (!response.ok) {
     const text = await response.text();
     throw new Error(`Discord webhook failed: ${response.status} ${text}`);
@@ -150,8 +178,10 @@ async function main() {
     console.error(`❌ stats.json not found at ${statsPath}`);
     process.exit(1);
   }
+
   const raw = fs.readFileSync(statsPath, "utf8");
   const data = JSON.parse(raw);
+
   const payload = buildDiscordPayload(data);
 
   if (process.argv.includes("--dry-run")) {

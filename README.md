@@ -14,12 +14,13 @@ A simple automated tracker that sends daily club statistics from uma.moe to a Di
 
 ### 1. Create Your Own Repository
 
-This is a **public template**. To use it:
+You need a **GitHub account** to use this template.
 
 1. Go to this repository.
 2. Click the green **"Use this template"** button (top right).
 3. Select **"Create a new repository"**.
-4. Give it a name and click **"Create repository"**.
+4. **Important:** Set the repository to **Private** (bad actors could hijack your embed otherwise).
+5. Give it a name and click **"Create repository"**.
 
 ### 2. Configure Your Settings
 

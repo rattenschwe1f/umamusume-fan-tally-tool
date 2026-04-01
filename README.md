@@ -46,3 +46,6 @@ WEBHOOK_NAME=
 
 # Your club name (used in messages and embed titles)
 CLUB_NAME=
+
+This is just a sloppy solution that works well enough that i made for my club and then decided to open it up for the wider Uma community — feel free to improve it!
+If you do make improvements, please notify me (Discord: rattenschweif). I'd love to see what you come up with.

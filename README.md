@@ -5,6 +5,7 @@ A simple automated tracker that sends daily club statistics from uma.moe to a Di
 ### Features
 - Daily club rank board showing: **Daily gain**, **7-day average**, **Monthly gain**, and **Goal progress**
 - Fully customizable **monthly goal** (`GOAL_METRIC`)
+-dynamic daily quota that updates throughout the month and lets you easily keep track of who is behind and who isnt
 - Custom **webhook name** so the bot appears with your preferred name in Discord
 - Automatically removes players that left the club
 

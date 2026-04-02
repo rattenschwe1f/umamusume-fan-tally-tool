@@ -29,9 +29,10 @@ function getGoalReachedEmote() {
   return emote || ":white_check_mark:";
 }
 
+// Fixed: Now properly allows GOAL_METRIC=0 for testing
 function getGoalMetric() {
   const metric = parseNumber(process.env.GOAL_METRIC);
-  return metric > 0 ? metric : 50000000;  // fallback
+  return metric >= 0 ? metric : 50000000;  // fallback only on negative/invalid values
 }
 
 function cleanNameAndRole(player) {
@@ -52,11 +53,9 @@ function formatPlayerLine(player) {
   const stats = player.stats || {};
   const rank = player.rank || "#?";
   const dailyRaw = parseNumber(stats.daily_gain || "0");
-  const avg7Raw = parseNumber(stats["7_day_avg"] || "0");
   const monthlyGainRaw = parseNumber(stats.monthly_gain || "0");
 
   const dailyFormatted = formatNumber(dailyRaw);
-  const avg7 = avg7Raw > 0 ? formatNumber(avg7Raw) : "0";
   const monthlyGain = formatNumber(monthlyGainRaw);
 
   const goalReachedEmote = getGoalReachedEmote();
@@ -68,19 +67,19 @@ function formatPlayerLine(player) {
   const currentDay = now.getDate();
   const currentQuotaTarget = Math.round(dailyQuota * currentDay);
 
+  // Dynamic Quota (day target)
+  const quotaStatus = monthlyGainRaw >= currentQuotaTarget
+    ? goalReachedEmote
+    : `${formatNumber(currentQuotaTarget - monthlyGainRaw)} required`;
+
   // Final Quota (full monthly goal)
   const finalQuotaStatus = monthlyGainRaw >= goalMetric
     ? goalReachedEmote
     : `${formatNumber(goalMetric - monthlyGainRaw)} required`;
 
-  // Dynamic Quota (current day target) - works exactly like final quota
-  const quotaStatus = monthlyGainRaw >= currentQuotaTarget
-    ? goalReachedEmote
-    : `${formatNumber(currentQuotaTarget - monthlyGainRaw)} required`;
-
   return {
     name: `${rank} ${name}`.slice(0, 256),
-    value: `Daily: ${dailyFormatted}\nAvg 7d: ${avg7}\nMonthly: ${monthlyGain}\nQuota: ${quotaStatus}\nFinal Quota: ${finalQuotaStatus}`,
+    value: `Daily: ${dailyFormatted}\nMonthly: ${monthlyGain}\nQuota: ${quotaStatus}\nFinal Quota: ${finalQuotaStatus}`,
     inline: true,
   };
 }

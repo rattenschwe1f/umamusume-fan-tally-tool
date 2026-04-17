@@ -1,5 +1,7 @@
 const { createCanvas } = require("@napi-rs/canvas");
 
+const SCALE = 3;
+
 const COLORS = {
   bg: "#121212",
   rowAlt: "#1e1e1e",
@@ -121,26 +123,23 @@ function truncateToWidth(ctx, text, maxWidth) {
   return `${s}…`;
 }
 
-/**
- * @param {{ players: object[], goalMetric: number, clubName?: string }} opts
- * @returns {Buffer}
- */
 function renderQuotaLeaderboardPng({ players, goalMetric, clubName }) {
   const club = String(clubName || "Club").trim() || "Club";
   const titleText = `${club} Quota Progress`;
-  const WIDTH = 980;
-  const padding = 24;
-  const titleH = 44;
-  const headerRowH = 28;
-  const lineH = 2;
-  const rowH = 38;
-  const gap = 12;
-  const rankColW = 52;
-  const nameMaxW = 210;
-  const barW = 200;
-  const pctW = 52;
-  const fansW = 138;
-  const allTimeW = 78;
+
+  const WIDTH = 980 * SCALE;
+  const padding = 24 * SCALE;
+  const titleH = 44 * SCALE;
+  const headerRowH = 28 * SCALE;
+  const lineH = 2 * SCALE;
+  const rowH = 38 * SCALE;
+  const gap = 12 * SCALE;
+  const rankColW = 52 * SCALE;
+  const nameMaxW = 210 * SCALE;
+  const barW = 200 * SCALE;
+  const pctW = 52 * SCALE;
+  const fansW = 138 * SCALE;
+  const allTimeW = 78 * SCALE;
 
   const list = Array.isArray(players) ? players : [];
   const height =
@@ -163,13 +162,9 @@ function renderQuotaLeaderboardPng({ players, goalMetric, clubName }) {
   let y = padding;
 
   ctx.fillStyle = COLORS.white;
-  ctx.font = "bold 26px system-ui, Segoe UI, Arial, sans-serif";
+  ctx.font = `bold ${26 * SCALE}px system-ui, Segoe UI, Arial, sans-serif`;
   ctx.textAlign = "left";
-  const titleDraw = truncateToWidth(
-    ctx,
-    titleText,
-    WIDTH - padding * 2
-  );
+  const titleDraw = truncateToWidth(ctx, titleText, WIDTH - padding * 2);
   ctx.fillText(titleDraw, padding, y + titleH / 2);
   y += titleH;
 
@@ -180,7 +175,7 @@ function renderQuotaLeaderboardPng({ players, goalMetric, clubName }) {
   const xFans = xPct + pctW + gap;
   const xAllTime = xFans + fansW + gap;
 
-  ctx.font = "11px system-ui, Segoe UI, Arial, sans-serif";
+  ctx.font = `${11 * SCALE}px system-ui, Segoe UI, Arial, sans-serif`;
   ctx.fillStyle = COLORS.grey;
   ctx.textAlign = "left";
   const headerY = y + headerRowH / 2;
@@ -204,7 +199,7 @@ function renderQuotaLeaderboardPng({ players, goalMetric, clubName }) {
 
   if (list.length === 0) {
     ctx.fillStyle = COLORS.grey;
-    ctx.font = "14px system-ui, Segoe UI, Arial, sans-serif";
+    ctx.font = `${14 * SCALE}px system-ui, Segoe UI, Arial, sans-serif`;
     ctx.fillText("No member data", padding, y + rowH / 2);
     return canvas.toBuffer("image/png");
   }
@@ -223,29 +218,24 @@ function renderQuotaLeaderboardPng({ players, goalMetric, clubName }) {
     const pctDisplay = Math.round(Math.max(0, Math.min(1000, pctRaw)));
     const barRatio = Math.min(1, pctRaw / 100);
     const displayRank = i + 1;
-    const rankLabel = `#${displayRank}`;
 
     const cy = rowTop + rowH / 2;
 
-    ctx.font = "bold 13px system-ui, Segoe UI, Arial, sans-serif";
+    ctx.font = `bold ${13 * SCALE}px system-ui, Segoe UI, Arial, sans-serif`;
     ctx.textAlign = "left";
-    if (displayRank <= 3) {
-      ctx.fillStyle = COLORS.gold;
-    } else {
-      ctx.fillStyle = COLORS.rankMuted;
-    }
-    ctx.fillText(rankLabel, xRank, cy);
+    ctx.fillStyle = displayRank <= 3 ? COLORS.gold : COLORS.rankMuted;
+    ctx.fillText(`#${displayRank}`, xRank, cy);
 
     ctx.fillStyle = COLORS.white;
-    ctx.font = "13px system-ui, Segoe UI, Arial, sans-serif";
-    const nameDraw = truncateToWidth(ctx, name, nameMaxW);
-    ctx.fillText(nameDraw, xName, cy);
+    ctx.font = `${13 * SCALE}px system-ui, Segoe UI, Arial, sans-serif`;
+    ctx.fillText(truncateToWidth(ctx, name, nameMaxW), xName, cy);
 
-    const barY = rowTop + (rowH - 14) / 2;
-    drawRoundedBar(ctx, xBar, barY, barW, 14, barRatio, barFillColor(pctRaw));
+    const barHeight = 14 * SCALE;
+    const barY = rowTop + (rowH - barHeight) / 2;
+    drawRoundedBar(ctx, xBar, barY, barW, barHeight, barRatio, barFillColor(pctRaw));
 
     ctx.textAlign = "right";
-    ctx.font = "bold 13px system-ui, Segoe UI, Arial, sans-serif";
+    ctx.font = `bold ${13 * SCALE}px system-ui, Segoe UI, Arial, sans-serif`;
     ctx.fillStyle = percentTextColor(pctRaw);
     ctx.fillText(`${pctDisplay}%`, xPct + pctW, cy);
 
@@ -253,23 +243,26 @@ function renderQuotaLeaderboardPng({ players, goalMetric, clubName }) {
     const goalCompact = compactNumber(goalMetric);
     const fansGrey = ` / ${goalCompact}`;
     const fansRight = xFans + fansW;
+
     ctx.textAlign = "right";
-    ctx.font = "13px system-ui, Segoe UI, Arial, sans-serif";
+    ctx.font = `${13 * SCALE}px system-ui, Segoe UI, Arial, sans-serif`;
     const greyW = ctx.measureText(fansGrey).width;
-    ctx.font = "bold 13px system-ui, Segoe UI, Arial, sans-serif";
-    const boldW = ctx.measureText(curCompact).width;
+    ctx.font = `bold ${13 * SCALE}px system-ui, Segoe UI, Arial, sans-serif`;
     ctx.fillStyle = COLORS.white;
     ctx.fillText(curCompact, fansRight - greyW, cy);
-    ctx.font = "13px system-ui, Segoe UI, Arial, sans-serif";
+
+    ctx.font = `${13 * SCALE}px system-ui, Segoe UI, Arial, sans-serif`;
     ctx.fillStyle = COLORS.grey;
     ctx.fillText(fansGrey, fansRight, cy);
 
     const allTime = pickAllTimeFans(stats);
     const allTimeStr = allTime != null ? compactNumber(allTime) : "—";
+
     ctx.textAlign = "right";
     ctx.fillStyle = COLORS.grey;
-    ctx.font = "13px system-ui, Segoe UI, Arial, sans-serif";
+    ctx.font = `${13 * SCALE}px system-ui, Segoe UI, Arial, sans-serif`;
     ctx.fillText(allTimeStr, xAllTime + allTimeW, cy);
+
     ctx.textAlign = "left";
   }
 

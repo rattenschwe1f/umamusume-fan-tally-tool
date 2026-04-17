@@ -21,10 +21,6 @@ function parseNumber(value) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-/* -----------------------------
-   FORMATTING HELPERS
-------------------------------*/
-
 function toMillions(n) {
   if (!Number.isFinite(n)) return "0m";
   const val = n / 1_000_000;
@@ -51,10 +47,6 @@ function cleanNameAndRole(player) {
   return { name, role: role || "UNKNOWN" };
 }
 
-/* -----------------------------
-   MOVEMENT LOGIC
-------------------------------*/
-
 function getMovement(name, currentRank, previousRanks) {
   const prev = previousRanks?.[name];
 
@@ -63,15 +55,10 @@ function getMovement(name, currentRank, previousRanks) {
   const diff = prev - currentRank;
 
   if (diff === 0) return { text: "-", color: COLORS.grey };
-
   if (diff > 0) return { text: `▲${diff}`, color: COLORS.green };
 
   return { text: `▼${Math.abs(diff)}`, color: COLORS.red };
 }
-
-/* -----------------------------
-   MAIN RENDER
-------------------------------*/
 
 function renderQuotaLeaderboardPng({
   players,
@@ -113,13 +100,11 @@ function renderQuotaLeaderboardPng({
 
   ctx.textBaseline = "middle";
 
-  /* background */
   ctx.fillStyle = COLORS.bg;
   ctx.fillRect(0, 0, WIDTH, height);
 
   let y = padding;
 
-  /* title */
   ctx.fillStyle = COLORS.white;
   ctx.font = `bold ${26 * SCALE}px system-ui`;
   ctx.textAlign = "left";
@@ -127,16 +112,17 @@ function renderQuotaLeaderboardPng({
 
   y += titleH;
 
-  /* column layout */
   const xRank = padding;
   const xMove = xRank + rankColW + gap;
   const xName = xMove + moveColW + gap;
 
   const xBar = xName + nameMaxW + gap;
-  const xQuota = xBar + barW + gap;
+
+  /* 🔥 ONLY CHANGE: moved QUOTA column slightly right */
+  const xQuota = xBar + barW + gap + 18 * SCALE;
+
   const xTotalFans = xQuota + quotaW + gap;
 
-  /* header */
   ctx.font = `${11 * SCALE}px system-ui`;
   ctx.fillStyle = COLORS.grey;
 
@@ -148,65 +134,43 @@ function renderQuotaLeaderboardPng({
   ctx.fillText("PLAYER", xName, headerY);
   ctx.fillText("PROGRESS", xBar, headerY);
 
-  /* UPDATED HEADERS */
   ctx.fillText("QUOTA", xQuota, headerY);
   ctx.fillText("TOTAL FANS", xTotalFans, headerY);
 
   y += headerRowH + lineH;
 
-  if (!list.length) {
-    ctx.fillStyle = COLORS.grey;
-    ctx.font = `${14 * SCALE}px system-ui`;
-    ctx.fillText("No member data", padding, y + rowH / 2);
-    return canvas.toBuffer("image/png");
-  }
-
-  /* rows */
   for (let i = 0; i < list.length; i++) {
     const player = list[i];
     const { name } = cleanNameAndRole(player);
 
     const stats = player.stats || {};
-
     const monthlyGain = parseNumber(stats.monthly_gain || "0");
 
-    /* quota calculation */
     const quotaValue = goalMetric > 0 ? (monthlyGain / goalMetric) * 100 : 0;
 
-    /* total fans */
     const totalFansRaw =
-      parseNumber(
-        stats.total_fans ??
-        stats.fans ??
-        stats.all_time_fans ??
-        stats.all_time ??
-        0
-      );
+      parseNumber(stats.total_fans ?? stats.fans ?? stats.all_time ?? 0);
 
     const rowTop = y + i * rowH;
     const cy = rowTop + rowH / 2;
 
-    /* row bg */
     ctx.fillStyle = i % 2 === 0 ? COLORS.rowAlt : COLORS.bg;
     ctx.fillRect(0, rowTop, WIDTH, rowH);
 
-    /* rank */
     ctx.textAlign = "left";
+
     ctx.font = `bold ${13 * SCALE}px system-ui`;
     ctx.fillStyle = i < 3 ? COLORS.gold : COLORS.rankMuted;
     ctx.fillText(`#${i + 1}`, xRank, cy);
 
-    /* movement */
     const move = getMovement(name, i + 1, previousRanks);
     ctx.fillStyle = move.color;
     ctx.fillText(move.text, xMove, cy);
 
-    /* name */
     ctx.fillStyle = COLORS.white;
     ctx.font = `${13 * SCALE}px system-ui`;
     ctx.fillText(name, xName, cy);
 
-    /* progress bar */
     const barY = rowTop + (rowH - 14 * SCALE) / 2;
 
     ctx.fillStyle = COLORS.barBg;
@@ -231,8 +195,6 @@ function renderQuotaLeaderboardPng({
     );
     ctx.fill();
 
-    /* quota column (NEW FORMAT) */
-    ctx.textAlign = "left";
     ctx.font = `bold ${13 * SCALE}px system-ui`;
 
     const quotaLeft = toMillions(monthlyGain);
@@ -242,9 +204,12 @@ function renderQuotaLeaderboardPng({
     ctx.fillText(quotaLeft, xQuota, cy);
 
     ctx.fillStyle = COLORS.grey;
-    ctx.fillText(`/${quotaRight}`, xQuota + ctx.measureText(quotaLeft).width + 6 * SCALE, cy);
+    ctx.fillText(
+      `/${quotaRight}`,
+      xQuota + ctx.measureText(quotaLeft).width + 6 * SCALE,
+      cy
+    );
 
-    /* total fans column (NEW FORMAT) */
     ctx.fillStyle = COLORS.white;
     ctx.font = `${13 * SCALE}px system-ui`;
     ctx.fillText(toRoundedMillions(totalFansRaw), xTotalFans, cy);

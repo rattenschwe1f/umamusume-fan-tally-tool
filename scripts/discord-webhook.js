@@ -73,6 +73,8 @@ function buildDiscordSendPayload(data, imageBuffer) {
   return {
     embeds: [
       {
+        title: `${getClubName()} Quota Progress`, // 💥 forces full-size embed
+        color: 0x5865F2, // optional but helps layout
         image: { url: `attachment://${ATTACHMENT_FILENAME}` },
       },
     ],
@@ -87,11 +89,13 @@ function buildDiscordSendPayload(data, imageBuffer) {
 function buildSendPackage(data) {
   const goalMetric = getGoalMetric();
   const players = collectPlayers(data);
+
   const imageBuffer = renderQuotaLeaderboardPng({
     players,
     goalMetric,
     clubName: getClubName(),
   });
+
   return buildDiscordSendPayload(data, imageBuffer);
 }
 
@@ -104,8 +108,10 @@ async function sendWebhookMultipart(payload) {
   if (!webhookUrl) throw new Error("Missing DISCORD_WEBHOOK_URL");
 
   const { embeds, imageBuffer } = payload;
+
   const form = new FormData();
   form.append("payload_json", JSON.stringify({ embeds }));
+
   form.append(
     "files[0]",
     new Blob([imageBuffer], { type: "image/png" }),
@@ -147,10 +153,12 @@ async function main() {
         note: "Real send uses multipart/form-data with this PNG as files[0]. No message text.",
       },
     };
+
     fs.writeFileSync(
       path.resolve(process.cwd(), "discord-payload.preview.json"),
       JSON.stringify(jsonSafe, null, 2)
     );
+
     console.log("✅ Dry run complete (PNG + JSON preview written)");
     return;
   }

@@ -29,7 +29,7 @@ function getGoalMetric() {
 }
 
 /* -----------------------------
-   PLAYER CLEANING
+   CLEAN DATA
 ------------------------------*/
 
 function cleanNameAndRole(player) {
@@ -49,20 +49,19 @@ function cleanNameAndRole(player) {
 
 function collectPlayers(data) {
   let players = Array.isArray(data.players) ? [...data.players] : [];
-
   players = players.filter((p) => cleanNameAndRole(p).role !== "LEFT");
 
   players.sort((a, b) => {
-    const gainA = parseNumber(a.stats?.monthly_gain || "0");
-    const gainB = parseNumber(b.stats?.monthly_gain || "0");
-    return gainB - gainA;
+    const aGain = parseNumber(a.stats?.monthly_gain || "0");
+    const bGain = parseNumber(b.stats?.monthly_gain || "0");
+    return bGain - aGain;
   });
 
   return players;
 }
 
 /* -----------------------------
-   HISTORY (RANK TRACKING)
+   HISTORY
 ------------------------------*/
 
 function loadHistory() {
@@ -76,6 +75,7 @@ function loadHistory() {
 
 function saveHistory(players) {
   const map = {};
+
   players.forEach((p, i) => {
     const { name } = cleanNameAndRole(p);
     map[name] = i + 1;
@@ -85,37 +85,34 @@ function saveHistory(players) {
 }
 
 /* -----------------------------
-   PAYLOAD
+   BUILD
 ------------------------------*/
 
-function buildDiscordSendPayload(data, imageBuffer) {
+function buildPayload(data) {
   const players = collectPlayers(data);
 
-  return {
-    embeds: [
-      {
-        title: `${getClubName()} Quota Progress`,
-        color: 0x5865F2,
-        image: { url: `attachment://${ATTACHMENT_FILENAME}` },
-      },
-    ],
-    imageBuffer,
+  const imageBuffer = renderQuotaLeaderboardPng({
     players,
-  };
+    goalMetric: getGoalMetric(),
+    clubName: getClubName(),
+    previousRanks: loadHistory(),
+  });
+
+  return { players, imageBuffer };
 }
 
 /* -----------------------------
-   WEBHOOK SEND
+   WEBHOOK (IMAGE ONLY)
 ------------------------------*/
 
-async function sendWebhookMultipart(payload) {
+async function sendWebhook(imageBuffer) {
   const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
   if (!webhookUrl) throw new Error("Missing DISCORD_WEBHOOK_URL");
 
-  const { embeds, imageBuffer } = payload;
-
   const form = new FormData();
-  form.append("payload_json", JSON.stringify({ embeds }));
+
+  /* 🚨 no embed, no title, no content */
+  form.append("payload_json", JSON.stringify({}));
 
   form.append(
     "files[0]",
@@ -129,7 +126,7 @@ async function sendWebhookMultipart(payload) {
   });
 
   if (!res.ok) {
-    throw new Error(`Discord webhook failed: ${res.status} ${await res.text()}`);
+    throw new Error(await res.text());
   }
 }
 
@@ -138,39 +135,15 @@ async function sendWebhookMultipart(payload) {
 ------------------------------*/
 
 async function main() {
-  if (!fs.existsSync(statsPath)) {
-    console.error("❌ stats.json not found");
-    process.exit(1);
-  }
-
   const data = JSON.parse(fs.readFileSync(statsPath, "utf8"));
-  const pkg = buildDiscordSendPayload(data);
 
-  const goalMetric = getGoalMetric();
+  const { players, imageBuffer } = buildPayload(data);
 
-  const imageBuffer = renderQuotaLeaderboardPng({
-    players: pkg.players,
-    goalMetric,
-    clubName: getClubName(),
-    previousRanks: loadHistory(),
-  });
+  await sendWebhook(imageBuffer);
 
-  pkg.imageBuffer = imageBuffer;
+  saveHistory(players);
 
-  if (process.argv.includes("--dry-run")) {
-    const previewPath = path.resolve(process.cwd(), "quota-progress.preview.png");
-    fs.writeFileSync(previewPath, imageBuffer);
-
-    console.log("✅ Dry run complete");
-    return;
-  }
-
-  await sendWebhookMultipart(pkg);
-
-  // save AFTER successful send
-  saveHistory(pkg.players);
-
-  console.log(`✅ Sent at ${new Date().toISOString()}`);
+  console.log("✅ Image sent (no embed, no title)");
 }
 
 main().catch((err) => {

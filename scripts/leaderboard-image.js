@@ -49,16 +49,46 @@ function cleanNameAndRole(player) {
 
 function getMovement(name, currentRank, previousRanks) {
   const prev = previousRanks?.[name];
-
   if (!prev) return { text: "-", color: COLORS.grey };
 
   const diff = prev - currentRank;
-
   if (diff === 0) return { text: "-", color: COLORS.grey };
   if (diff > 0) return { text: `▲${diff}`, color: COLORS.green };
 
   return { text: `▼${Math.abs(diff)}`, color: COLORS.red };
 }
+
+/* -----------------------------
+   NEW: pacing logic
+------------------------------*/
+
+function getExpectedProgress(goalMetric) {
+  const now = new Date();
+  const day = now.getDate();
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+
+  return (goalMetric / daysInMonth) * day;
+}
+
+function getBarColor(monthlyGain, goalMetric) {
+  const expected = getExpectedProgress(goalMetric);
+
+  // 🚨 behind pace = red override
+  if (monthlyGain < expected) {
+    return COLORS.red;
+  }
+
+  // normal behavior if on track or ahead
+  const pct = goalMetric > 0 ? (monthlyGain / goalMetric) * 100 : 0;
+
+  if (pct >= 100) return COLORS.green;
+  if (pct >= 30) return COLORS.blue;
+  return COLORS.blue;
+}
+
+/* -----------------------------
+   RENDER
+------------------------------*/
 
 function renderQuotaLeaderboardPng({
   players,
@@ -117,10 +147,7 @@ function renderQuotaLeaderboardPng({
   const xName = xMove + moveColW + gap;
 
   const xBar = xName + nameMaxW + gap;
-
-  /* 🔥 ONLY CHANGE: moved QUOTA column slightly right */
   const xQuota = xBar + barW + gap + 18 * SCALE;
-
   const xTotalFans = xQuota + quotaW + gap;
 
   ctx.font = `${11 * SCALE}px system-ui`;
@@ -171,19 +198,20 @@ function renderQuotaLeaderboardPng({
     ctx.font = `${13 * SCALE}px system-ui`;
     ctx.fillText(name, xName, cy);
 
+    /* -----------------------------
+       UPDATED BAR COLOR LOGIC
+    ------------------------------*/
+
     const barY = rowTop + (rowH - 14 * SCALE) / 2;
+
+    const barColor = getBarColor(monthlyGain, goalMetric);
 
     ctx.fillStyle = COLORS.barBg;
     ctx.beginPath();
     ctx.roundRect(xBar, barY, barW, 14 * SCALE, 7 * SCALE);
     ctx.fill();
 
-    ctx.fillStyle =
-      quotaValue >= 100
-        ? COLORS.green
-        : quotaValue >= 30
-        ? COLORS.blue
-        : COLORS.red;
+    ctx.fillStyle = barColor;
 
     ctx.beginPath();
     ctx.roundRect(
@@ -195,6 +223,7 @@ function renderQuotaLeaderboardPng({
     );
     ctx.fill();
 
+    /* quota */
     ctx.font = `bold ${13 * SCALE}px system-ui`;
 
     const quotaLeft = toMillions(monthlyGain);
@@ -210,6 +239,7 @@ function renderQuotaLeaderboardPng({
       cy
     );
 
+    /* total fans */
     ctx.fillStyle = COLORS.white;
     ctx.font = `${13 * SCALE}px system-ui`;
     ctx.fillText(toRoundedMillions(totalFansRaw), xTotalFans, cy);

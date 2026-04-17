@@ -1,0 +1,22 @@
+{
+  "name": "lino-bullshit",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "collect:stats": "cypress run --spec cypress/e2e/fishing-components.cy.js",
+    "discord:preview": "node scripts/discord-webhook.js --dry-run",
+    "discord:send": "node scripts/discord-webhook.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.15.0",
+  "devDependencies": {
+    "cypress": "^15.13.0"
+  },
+  "dependencies": {
+    "@napi-rs/canvas": "^0.1.98",
+    "dotenv": "^17.3.1"
+  }
+}

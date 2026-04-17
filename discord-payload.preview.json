@@ -1,0 +1,15 @@
+{
+  "embeds": [
+    {
+      "image": {
+        "url": "attachment://quota-progress.png"
+      }
+    }
+  ],
+  "meta": {
+    "playerCount": 3,
+    "attachmentFilename": "quota-progress.png",
+    "imagePreviewPath": "C:\\Users\\Ratte\\Downloads\\umamusume-fan-tally-tool-testing-branch-main\\umamusume-fan-tally-tool-testing-branch-main\\quota-progress.preview.png",
+    "note": "Real send uses multipart/form-data with this PNG as files[0]. No message text."
+  }
+}

@@ -1,0 +1,46 @@
+name: Daily Discord Stats
+
+on:
+  schedule:
+    - cron: 12 15 2-31 * *    
+    - cron: '12 9 1 * *'
+
+  workflow_dispatch:
+
+jobs:
+  collect-and-send:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Cypress binary
+        run: pnpm exec cypress install
+
+      - name: Verify Cypress binary
+        run: pnpm exec cypress verify
+
+      - name: Collect latest stats
+        uses: cypress-io/github-action@v6
+        with:
+          install: false
+          command: pnpm run collect:stats
+
+      - name: Send Discord webhook message
+        run: node scripts/discord-webhook.js

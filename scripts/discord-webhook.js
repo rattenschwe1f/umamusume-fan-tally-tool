@@ -5,6 +5,7 @@ require("dotenv").config();
 const { renderQuotaLeaderboardPng } = require("./leaderboard-image");
 
 const statsPath = path.resolve(process.cwd(), "stats.json");
+const historyPath = path.resolve(process.cwd(), "rank-history.json");
 const ATTACHMENT_FILENAME = "quota-progress.png";
 
 /* -----------------------------
@@ -28,7 +29,7 @@ function getGoalMetric() {
 }
 
 /* -----------------------------
-   CLEAN PLAYER DATA
+   PLAYER CLEANING
 ------------------------------*/
 
 function cleanNameAndRole(player) {
@@ -46,17 +47,10 @@ function cleanNameAndRole(player) {
   return { name, role: role || "UNKNOWN" };
 }
 
-/* -----------------------------
-   BUILD MESSAGE + IMAGE
-------------------------------*/
-
 function collectPlayers(data) {
   let players = Array.isArray(data.players) ? [...data.players] : [];
 
-  players = players.filter((player) => {
-    const { role } = cleanNameAndRole(player);
-    return role !== "LEFT";
-  });
+  players = players.filter((p) => cleanNameAndRole(p).role !== "LEFT");
 
   players.sort((a, b) => {
     const gainA = parseNumber(a.stats?.monthly_gain || "0");
@@ -67,36 +61,51 @@ function collectPlayers(data) {
   return players;
 }
 
+/* -----------------------------
+   HISTORY (RANK TRACKING)
+------------------------------*/
+
+function loadHistory() {
+  if (!fs.existsSync(historyPath)) return {};
+  try {
+    return JSON.parse(fs.readFileSync(historyPath, "utf8"));
+  } catch {
+    return {};
+  }
+}
+
+function saveHistory(players) {
+  const map = {};
+  players.forEach((p, i) => {
+    const { name } = cleanNameAndRole(p);
+    map[name] = i + 1;
+  });
+
+  fs.writeFileSync(historyPath, JSON.stringify(map, null, 2));
+}
+
+/* -----------------------------
+   PAYLOAD
+------------------------------*/
+
 function buildDiscordSendPayload(data, imageBuffer) {
   const players = collectPlayers(data);
 
   return {
     embeds: [
       {
+        title: `${getClubName()} Quota Progress`,
+        color: 0x5865F2,
         image: { url: `attachment://${ATTACHMENT_FILENAME}` },
       },
     ],
     imageBuffer,
-    meta: {
-      playerCount: players.length,
-      attachmentFilename: ATTACHMENT_FILENAME,
-    },
+    players,
   };
 }
 
-function buildSendPackage(data) {
-  const goalMetric = getGoalMetric();
-  const players = collectPlayers(data);
-  const imageBuffer = renderQuotaLeaderboardPng({
-    players,
-    goalMetric,
-    clubName: getClubName(),
-  });
-  return buildDiscordSendPayload(data, imageBuffer);
-}
-
 /* -----------------------------
-   SEND WEBHOOK
+   WEBHOOK SEND
 ------------------------------*/
 
 async function sendWebhookMultipart(payload) {
@@ -104,8 +113,10 @@ async function sendWebhookMultipart(payload) {
   if (!webhookUrl) throw new Error("Missing DISCORD_WEBHOOK_URL");
 
   const { embeds, imageBuffer } = payload;
+
   const form = new FormData();
   form.append("payload_json", JSON.stringify({ embeds }));
+
   form.append(
     "files[0]",
     new Blob([imageBuffer], { type: "image/png" }),
@@ -133,33 +144,33 @@ async function main() {
   }
 
   const data = JSON.parse(fs.readFileSync(statsPath, "utf8"));
-  const pkg = buildSendPackage(data);
+  const pkg = buildDiscordSendPayload(data);
+
+  const goalMetric = getGoalMetric();
+
+  const imageBuffer = renderQuotaLeaderboardPng({
+    players: pkg.players,
+    goalMetric,
+    clubName: getClubName(),
+    previousRanks: loadHistory(),
+  });
+
+  pkg.imageBuffer = imageBuffer;
 
   if (process.argv.includes("--dry-run")) {
     const previewPath = path.resolve(process.cwd(), "quota-progress.preview.png");
-    fs.writeFileSync(previewPath, pkg.imageBuffer);
+    fs.writeFileSync(previewPath, imageBuffer);
 
-    const jsonSafe = {
-      embeds: pkg.embeds,
-      meta: {
-        ...pkg.meta,
-        imagePreviewPath: previewPath,
-        note: "Real send uses multipart/form-data with this PNG as files[0]. No message text.",
-      },
-    };
-    fs.writeFileSync(
-      path.resolve(process.cwd(), "discord-payload.preview.json"),
-      JSON.stringify(jsonSafe, null, 2)
-    );
-    console.log("✅ Dry run complete (PNG + JSON preview written)");
+    console.log("✅ Dry run complete");
     return;
   }
 
   await sendWebhookMultipart(pkg);
 
-  console.log(
-    `✅ ${getClubName()} stats successfully sent at ${new Date().toISOString()}`
-  );
+  // save AFTER successful send
+  saveHistory(pkg.players);
+
+  console.log(`✅ Sent at ${new Date().toISOString()}`);
 }
 
 main().catch((err) => {

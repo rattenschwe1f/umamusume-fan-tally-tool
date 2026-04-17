@@ -58,38 +58,6 @@ function getMovement(name, currentRank, previousRanks) {
   return { text: `▼${Math.abs(diff)}`, color: COLORS.red };
 }
 
-/* -----------------------------
-   NEW: pacing logic
-------------------------------*/
-
-function getExpectedProgress(goalMetric) {
-  const now = new Date();
-  const day = now.getDate();
-  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-
-  return (goalMetric / daysInMonth) * day;
-}
-
-function getBarColor(monthlyGain, goalMetric) {
-  const expected = getExpectedProgress(goalMetric);
-
-  // 🚨 behind pace = red override
-  if (monthlyGain < expected) {
-    return COLORS.red;
-  }
-
-  // normal behavior if on track or ahead
-  const pct = goalMetric > 0 ? (monthlyGain / goalMetric) * 100 : 0;
-
-  if (pct >= 100) return COLORS.green;
-  if (pct >= 30) return COLORS.blue;
-  return COLORS.blue;
-}
-
-/* -----------------------------
-   RENDER
-------------------------------*/
-
 function renderQuotaLeaderboardPng({
   players,
   goalMetric,
@@ -112,8 +80,8 @@ function renderQuotaLeaderboardPng({
 
   const barW = 220 * SCALE;
 
-  const quotaW = 160 * SCALE;
-  const totalFansW = 120 * SCALE;
+  const quotaW = 170 * SCALE;      // slightly wider
+  const totalFansW = 130 * SCALE;  // slightly wider
 
   const list = Array.isArray(players) ? players : [];
 
@@ -147,9 +115,13 @@ function renderQuotaLeaderboardPng({
   const xName = xMove + moveColW + gap;
 
   const xBar = xName + nameMaxW + gap;
-  const xQuota = xBar + barW + gap + 18 * SCALE;
-  const xTotalFans = xQuota + quotaW + gap;
 
+  const xPct = xBar + barW + 8 * SCALE; // 👈 % goes right of bar
+
+  const xQuota = xPct + 55 * SCALE + 18 * SCALE; // 👈 pushed right
+  const xTotalFans = xQuota + quotaW + gap + 10 * SCALE;
+
+  /* header */
   ctx.font = `${11 * SCALE}px system-ui`;
   ctx.fillStyle = COLORS.grey;
 
@@ -160,7 +132,7 @@ function renderQuotaLeaderboardPng({
   ctx.fillText("", xMove, headerY);
   ctx.fillText("PLAYER", xName, headerY);
   ctx.fillText("PROGRESS", xBar, headerY);
-
+  ctx.fillText("", xPct, headerY);
   ctx.fillText("QUOTA", xQuota, headerY);
   ctx.fillText("TOTAL FANS", xTotalFans, headerY);
 
@@ -198,20 +170,20 @@ function renderQuotaLeaderboardPng({
     ctx.font = `${13 * SCALE}px system-ui`;
     ctx.fillText(name, xName, cy);
 
-    /* -----------------------------
-       UPDATED BAR COLOR LOGIC
-    ------------------------------*/
-
+    /* progress bar */
     const barY = rowTop + (rowH - 14 * SCALE) / 2;
-
-    const barColor = getBarColor(monthlyGain, goalMetric);
 
     ctx.fillStyle = COLORS.barBg;
     ctx.beginPath();
     ctx.roundRect(xBar, barY, barW, 14 * SCALE, 7 * SCALE);
     ctx.fill();
 
-    ctx.fillStyle = barColor;
+    ctx.fillStyle =
+      quotaValue >= 100
+        ? COLORS.green
+        : quotaValue >= 30
+        ? COLORS.blue
+        : COLORS.red;
 
     ctx.beginPath();
     ctx.roundRect(
@@ -222,6 +194,11 @@ function renderQuotaLeaderboardPng({
       7 * SCALE
     );
     ctx.fill();
+
+    /* ✅ RESTORED % LABEL */
+    ctx.fillStyle = COLORS.grey;
+    ctx.font = `bold ${11 * SCALE}px system-ui`;
+    ctx.fillText(`${Math.round(quotaValue)}%`, xPct, cy);
 
     /* quota */
     ctx.font = `bold ${13 * SCALE}px system-ui`;

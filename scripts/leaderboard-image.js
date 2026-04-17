@@ -36,25 +36,40 @@ function cleanNameAndRole(player) {
   return { name, role: role || "UNKNOWN" };
 }
 
-function getMovement(name, currentRank, previousRanks) {
-  if (!previousRanks || !previousRanks[name]) return 0;
-  return previousRanks[name] - currentRank;
-}
+/* -----------------------------
+   MOVEMENT LOGIC
+------------------------------*/
 
-function drawArrow(ctx, movement, x, y, scale) {
-  if (movement === 0) return;
+function getMovementSymbol(name, currentRank, previousRanks) {
+  const prev = previousRanks?.[name];
 
-  ctx.font = `${12 * scale}px system-ui`;
-  if (movement > 0) {
-    ctx.fillStyle = "#4ADE80";
-    ctx.fillText(`▲${movement}`, x, y);
-  } else {
-    ctx.fillStyle = "#EF4444";
-    ctx.fillText(`▼${Math.abs(movement)}`, x, y);
+  if (!prev) {
+    return { text: "-", color: COLORS.grey };
   }
+
+  const diff = prev - currentRank;
+
+  if (diff === 0) {
+    return { text: "-", color: COLORS.grey };
+  }
+
+  if (diff > 0) {
+    return { text: `▲${diff}`, color: COLORS.green };
+  }
+
+  return { text: `▼${Math.abs(diff)}`, color: COLORS.red };
 }
 
-function renderQuotaLeaderboardPng({ players, goalMetric, clubName, previousRanks = {} }) {
+/* -----------------------------
+   RENDER
+------------------------------*/
+
+function renderQuotaLeaderboardPng({
+  players,
+  goalMetric,
+  clubName,
+  previousRanks = {},
+}) {
   const SCALE = 3;
 
   const WIDTH = 980 * SCALE;
@@ -64,12 +79,9 @@ function renderQuotaLeaderboardPng({ players, goalMetric, clubName, previousRank
   const lineH = 2 * SCALE;
   const rowH = 38 * SCALE;
   const gap = 12 * SCALE;
+
   const rankColW = 52 * SCALE;
   const nameMaxW = 210 * SCALE;
-  const barW = 200 * SCALE;
-  const pctW = 52 * SCALE;
-  const fansW = 138 * SCALE;
-  const allTimeW = 78 * SCALE;
 
   const list = Array.isArray(players) ? players : [];
 
@@ -85,6 +97,7 @@ function renderQuotaLeaderboardPng({ players, goalMetric, clubName, previousRank
   const ctx = canvas.getContext("2d");
 
   ctx.textBaseline = "middle";
+
   ctx.fillStyle = COLORS.bg;
   ctx.fillRect(0, 0, WIDTH, height);
 
@@ -93,17 +106,12 @@ function renderQuotaLeaderboardPng({ players, goalMetric, clubName, previousRank
   ctx.fillStyle = COLORS.white;
   ctx.font = `bold ${26 * SCALE}px system-ui`;
   ctx.fillText(`${clubName} Quota Progress`, padding, y + titleH / 2);
-  y += titleH;
 
-  const xRank = padding;
+  y += titleH + headerRowH + lineH;
+
+  const xArrow = padding;
+  const xRank = xArrow + 60 * SCALE;
   const xName = xRank + rankColW + gap;
-  const xBar = xName + nameMaxW + gap;
-  const xPct = xBar + barW + gap;
-
-  ctx.font = `${11 * SCALE}px system-ui`;
-  ctx.fillStyle = COLORS.grey;
-
-  y += headerRowH + lineH;
 
   for (let i = 0; i < list.length; i++) {
     const player = list[i];
@@ -112,9 +120,11 @@ function renderQuotaLeaderboardPng({ players, goalMetric, clubName, previousRank
     const rowTop = y + i * rowH;
     const cy = rowTop + rowH / 2;
 
-    const movement = getMovement(name, i + 1, previousRanks);
+    const move = getMovementSymbol(name, i + 1, previousRanks);
 
-    drawArrow(ctx, movement, xRank - 20 * SCALE, cy, SCALE);
+    ctx.fillStyle = move.color;
+    ctx.font = `bold ${13 * SCALE}px system-ui`;
+    ctx.fillText(move.text, xArrow, cy);
 
     ctx.fillStyle = COLORS.white;
     ctx.font = `${13 * SCALE}px system-ui`;

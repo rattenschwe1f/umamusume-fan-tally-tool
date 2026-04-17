@@ -184,8 +184,8 @@ function renderQuotaLeaderboardPng({ players, goalMetric, clubName }) {
   ctx.fillText("PROGRESS", xBar, headerY);
   ctx.textAlign = "right";
   ctx.fillText("%", xPct + pctW, headerY);
-  ctx.fillText("FANS", xFans + fansW, headerY);
-  ctx.fillText("ALL TIME", xAllTime + allTimeW, headerY);
+  ctx.fillText("Monthly FANS", xFans + fansW, headerY);
+  ctx.fillText("Total Fans", xAllTime + allTimeW, headerY);
   ctx.textAlign = "left";
 
   y += headerRowH;
